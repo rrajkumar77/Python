@@ -24,3 +24,6 @@ print(sorted(list))
 #Reverse the list
 print(list [::-1])
 
+print(len(list))
+
+
