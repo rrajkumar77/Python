@@ -1,7 +1,3 @@
-# Python
-Python Project
-
-
 list = ["Marketing", "Content", "Designing", "Sales"]
 print (list)
 print (list + ["Python"])
