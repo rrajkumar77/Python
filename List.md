@@ -9,3 +9,5 @@ print (list[0:2])
 list[1] = "Java" #update List
 
 del (list[2]) #Delete List
+print(list.pop(3))
+list.remove('Content')
