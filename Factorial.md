@@ -1,7 +1,7 @@
 # Python
 
 num=int(input("Number : "))
-factorial - 1
+factorial = 1
 if num<0:
     print("Must be positive")
 elif num == 0:
