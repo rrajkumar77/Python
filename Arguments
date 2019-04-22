@@ -22,3 +22,14 @@ def info(user,*users):
         print (var)
         return()
         
+# Variable Length Arguments
+def info(user1, user2, user3, user4, *users, **kwuser):
+    print("1st user:" + str(user1))
+    print("2nd user:" + str(user2))
+    print("3rd user:" + str(user3))
+    print("4th user:" + str(user4))
+    print("Non user:" + str(users))
+    print("Keyword user:" + str(kwuser))
+
+        
+info(1,2,3,4,5,6,7,8,name='Raj', Country="India",age=40)
