@@ -12,3 +12,13 @@ def info (name,age=50):
 
 info(age=25,name="Raj")
 info(name="Kumar")
+
+# Variable Length Arguments
+def info(user,*users):
+    print("User of Python:")
+    print(user)
+    for var in users:
+        print("Users of Python:")
+        print (var)
+        return()
+        
