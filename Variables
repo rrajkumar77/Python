@@ -7,3 +7,12 @@ def add(b):
 print (a)  
 add(40)
 print (c) # NameError: name 'c' is not defined
+
+
+
+#Memory Address
+a=10
+b=10
+
+print(id(a))
+print(id(b))
