@@ -1,0 +1,14 @@
+#Keyword Arguments
+def welcome(str):
+    print("Welcome to python,", str)
+    return()
+welcome(str="Raj")
+  
+#Default Arguments
+def info (name,age=50):
+    print ("Name: ", name )
+    print ("Age:", age)
+    return ()
+
+info(age=25,name="Raj")
+info(name="Kumar")
