@@ -688,3 +688,88 @@ female students or students with maths score above 60
 
 ## ASSIGNMENT 2 (sent over email)
 
+
+
+
+## ASSIGNMENT 1
+## DATAFRAME SLICING
+
+# Slice the following
+# Maths column
+
+import numpy as np
+import pandas as pd
+
+math_score_array = np.array([95,67,88,45,84])
+eng_score_array = np.array([32,67,45,39,67])
+gender_array = np.array(["M","M","F","M","F"])
+
+math_column = math_score_array
+
+# Maths and English Column
+math_eng_column = {"Maths": math_score_array,
+              "English": eng_score_array}
+
+
+# "Maths" column of "R1001"
+
+
+score_dict = {"Maths": math_score_array,
+              "English": eng_score_array,
+              "Gender": gender_array}
+
+df_score = pd.DataFrame(score_dict,index = ["R1001","R1002","R1003","R1004","R1005"])
+
+
+df_score.loc["R1001","Maths"]
+
+# "Maths" and English column values of "R1001" and "R1003"
+
+df_score.loc[["R1001","R1002"], ["Maths","English"]]
+
+
+# All rows, 2nd column
+
+df_score.loc[:,["English"]]
+
+# 0th and 3rd row, 0th and 1st 
+df_score.iloc[[0,3],[0,1]]
+
+
+# data frame of Male students alone
+cond = df_score["Gender"] == "M"
+df_male = df_score[cond]
+
+# english and maths score of Male students
+cond1 = df_score["Gender"] == "M"
+df_male_engmat = df_score.loc[cond1,["Maths","English"]]                      
+
+
+# all columns of students who score above 70 in Maths
+
+cond2 = df_score["Maths"]>70
+all_70 = df_score[cond2]
+
+# average maths score of students who got above 60 in English
+
+cond3 = df_score["English"]>60
+math = df_score.loc[cond3,["Maths"]]
+np.mean(math)
+
+# average english score of students who are above average in maths
+
+math1 = df_score["Maths"]
+cond4 = df_score["Maths"]>np.mean(math1)
+engval = df_score.loc[cond4,["English"]]
+np.mean(engval)
+
+
+# all columns of male students who scores above 60 in maths
+maths60 = df_score["Maths"]>60
+male60 = df_score.loc[maths60 & cond]
+           
+"""
+slice english and gender column of either 
+female students or students with maths score above 60
+"""
+enggen = df_score.loc[maths60,["English","Gender"]]
