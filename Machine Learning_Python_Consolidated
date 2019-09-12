@@ -1,0 +1,1526 @@
+import requests # reading source of web pages
+from bs4 import BeautifulSoup # beautiful soup has the ability to understand html tags
+import pandas as pd
+
+r = requests.get("http://www.mationalytics.com/sample.html")
+print(r.content)
+# converting the web page source to beautiful soup object
+
+soup = BeautifulSoup(r.content)
+type(soup)
+
+for i in soup.find_all("a"):
+    print(i.text)
+
+for i in soup.find_all("a"):
+    print(i['href'])
+    
+for i in soup.find_all("li"):
+    print(i.text)
+
+soup.find_all("img")
+soup.find_all("img")[0]["src"]
+
+################3 Nasdaq ################################3
+
+list_of_symbols = ["amzn","wmt","aapl"]
+
+for i in list_of_symbols:    
+    r = requests.get("https://www.nasdaq.com/symbol/" + i)
+    soup = BeautifulSoup(r.content)
+    
+    # find returns the 1st occurence
+    # find all returns all the occurences as a list
+    company_header = soup.find("div",id = "qwidget_pageheader").text
+    stock_price = soup.find("div",id = "qwidget_lastsale").text
+    net_change = soup.find("div",id = "qwidget_netchange").text
+    
+    print("Company: ", company_header,
+          "\n Stock Prince: ", stock_price,
+          "\n Net Change: ", net_change)
+
+######### Retrieving tables from web pages ###########################
+
+r = requests.get(
+        "https://www.icc-cricket.com/rankings/mens/team-rankings/odi")
+soup = BeautifulSoup(r.content)
+soup.find("table")
+# It is painful to parse the information in table using Beautiful Soup
+     # and convert it to a structured data type like data frame
+   
+game_formats = ["odi","test","t20i"]
+for i in game_formats:          
+    # pandas read html will return list of tables
+     # each table in the page will be a list element as data frame 
+    list_of_tables = pd.read_html(
+            "https://www.icc-cricket.com/rankings/mens/team-rankings/"+i)
+    team_ranking = list_of_tables[0]
+    print(i)
+    print(team_ranking.loc[team_ranking["Pos"] == 1, :])
+
+## Try merging (inner join) the 3 tables (odi, test and t20i)
+    # sum the points across all game formats
+    # sort the teams based on their points
+
+############# Assignment ####################################################
+    
+"http://www.espncricinfo.com/wi/engine/series/1078425.html?view=pointstable"
+
+# Pull the 2 tables from the above link
+
+# Aggregate Points by Match table at a team level
+# Check whether it is correct by comparing with Points by Team table
+
+
+################################## Twitter API ##############################
+from twython import Twython
+from twython import TwythonStreamer # Streaming API
+from textblob import TextBlob
+import pandas as pd
+#https://developer.twitter.com/en/docs/tweets/search/api-reference/get-search-tweets.html
+
+TWITTER_APP_KEY = 'vCkkcuMgcuY6JUiYgjco3L94z' 
+TWITTER_APP_KEY_SECRET = 'f295VNFv730femzg49Wngs7g455stkZ4By37VoqC8pHspuUYcW' 
+TWITTER_ACCESS_TOKEN = '2792523670-kn31Lr0mjZDSQhyagPHtGpnh2mZ6VZUDYjEk5WY'
+TWITTER_ACCESS_TOKEN_SECRET = '6pozPCNQVxp4okR7FfRglJ0fk45jmshxy8IGN5SaTPwdx' 
+
+twit_conn = Twython(app_key=TWITTER_APP_KEY,
+                    app_secret = TWITTER_APP_KEY_SECRET,
+                    oauth_token = TWITTER_ACCESS_TOKEN,
+                    oauth_token_secret = TWITTER_ACCESS_TOKEN_SECRET)
+twit_conn.get_account_settings()
+
+ind_vs_eng = twit_conn.search(q = "#INDvENG")
+# Returns adictionary
+
+ind_vs_eng2 = twit_conn.search(q = "#INDvENG",
+                               lang = "en",
+                               result_type = "recent",
+                               count = 100)   
+
+sund_morn_usa = twit_conn.search(q = "#SundayMorning",
+                               lang = "en",
+                               result_type = "mixed",
+                               count = 100) 
+sund_morn_usa_statuses = sund_morn_usa["statuses"] # List of dictionary
+
+sund_morn_tweets = []
+for i in sund_morn_usa_statuses:
+    sund_morn_tweets.append(i['text'])
+
+## Text Blob has sentiment analysis feature using pre-trained models
+## Returns polarity for a string. Polarity will be between -1 and 1
+    # -1: Negative sentiment
+    # 0: Neutral
+    # 1: Positive sentiment
+TextBlob("I am happy").polarity
+TextBlob("Sunday evening is always frustrating. I hate Monday is coming").polarity
+TextBlob("I hardly feel sad if anything goes wrong. Not feeling down is my character").polarity
+
+tweet_senti = pd.DataFrame(columns = ["Tweet","Polarity"])
+tweet_senti["Tweet"] = sund_morn_tweets
+tweet_senti["Polarity"] = 0
+
+for i in range(len(sund_morn_tweets)):
+    tweet_senti.iloc[i,1] = TextBlob(sund_morn_tweets[i]).polarity
+
+
+############################# Regression ######################
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import statsmodels.formula.api as smf
+import statsmodels.api as sm
+from sklearn.model_selection import train_test_split
+#from sklearn.cross_validation import train_test_split
+# Assumptions of Regression
+# https://www.statisticssolutions.com/assumptions-of-linear-regression/
+
+
+# Step 0: Data Preparation, cleaning, outlier treatment, missing value treatment
+# Step 1: Definition of DV (Dependent Variable) and IDVs(Independent Variables)
+   # Do one hot encoding of nominal categorical IDVs (e.g: Gender)
+   # Ordinal categorical can be kept as numbers (e.g: Cancer stage)
+# Step 2: Exploratory analysis
+  # Scatter plot between DV and IDV
+# Step 3: Do a correlation analysis between DV and IDV
+  # Correlation is normalized form of covariance
+  # Correlation result will be between -1 to 1
+    # -1: Strong negative correlation; Production vs Price
+    # +1: Strong Positive Correlation; Economy growth vs Stock market returns
+    # 0: Weak correlation; onion price vs number of divorces
+  # In case of multiple regression, check for multi collinearity issue
+    # IDVs should not be correlated between themselves
+# Step 4: Build a model using Least Squares method
+    # Train - Test - Validate
+    # Train (70%) - Test (30%)
+    # Simple Linear
+    # Multiple Linear
+    # Siomple Non Linear
+    # Multiple Non Linear
+    # Variable Transformation
+       # Linear - Linear
+       # Log - Linear
+       # Linear - Log
+       # Log - Log
+    # Additional modeling techniques in case of several IDVs
+           # Step wise regression; iteratively add/remove variables 
+           # Regularized Regression; have penalty to variables which don't explain additional variance thereby bringing down it's coefficient
+                   # Lasso(Significantly reduces the number of variables), 
+                   # Ridge (retains all the variables and share coefficient), 
+                   # Elastic net (between lasso and ridge)
+                   # https://scikit-learn.org/stable/modules/linear_model.html
+  
+# Step 5: Model Evaluation
+    # R-squared
+      # will be between 0 and 1; 0 - Bad Model; 1 - Good model
+      # Check Adj R2 for multiple regression
+    # MAPE Mean Absolute Percentage Error
+    # p value; statistical significance of a variable
+         # p will be between 0 to 1
+         # p value should be less (<0.05) for a variable to be considered significant
+          # Hypothesis testinng of a judge
+             # H0 (null hypothesis): the accused is innocent
+             # if probability of H0 is low, then the accused is convicted
+        # Hypothesis testing for Regression
+           # H0: the IDV is insignificant
+           # if the probability is less, then the variable is treated as significant
+# Step 5: Go live and start predicting       
+
+mtcars = pd.read_csv("data/mtcars.csv")
+
+########## Manually finding a best fitting line #################
+plt.scatter(mtcars["wt"],mtcars["mpg"])
+plt.xlim([0,6])
+plt.ylim([0,50])
+
+wt = np.array([0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6])
+fitted_mpg1 = -8*wt + 45
+fitted_mpg2 = -7.9*wt + 44
+
+plt.scatter(mtcars["wt"],mtcars["mpg"])
+plt.plot(wt,fitted_mpg1,c = "red")
+plt.plot(wt,fitted_mpg2,c = "green")
+
+fitted_mpg1 = -8*mtcars["wt"] + 45
+fitted_mpg2 = -7.9*mtcars["wt"] + 44
+
+mpg_comparison = pd.DataFrame({
+        "Actual": mtcars["mpg"],
+        "Fitted1": fitted_mpg1,
+        "Fitted2": fitted_mpg2})
+mpg_comparison["Error1"] = mpg_comparison["Fitted1"] - \
+                mpg_comparison["Actual"]
+mpg_comparison["Error2"] = mpg_comparison["Fitted2"] - \
+                mpg_comparison["Actual"]
+mpg_comparison["Error1"].mean()
+mpg_comparison["Error2"].mean()
+# Positive and negative errors cancels out
+# Hence taking square of error
+mpg_comparison["Squared_Error1"] = mpg_comparison["Error1"]**2
+mpg_comparison["Squared_Error2"] = mpg_comparison["Error2"]**2
+
+## MEAN SQUARED eRROR (MSE)
+mpg_comparison["Squared_Error1"].mean()
+mpg_comparison["Squared_Error2"].mean()
+
+## ROOT MEAN SQUARED eRROR (MSE)
+mpg_comparison["Squared_Error1"].mean()**0.5
+mpg_comparison["Squared_Error2"].mean()**0.5
+
+## Sum of Squared ERROR (SSE)
+mpg_comparison["Squared_Error1"].sum()
+mpg_comparison["Squared_Error2"].sum()
+
+# Line 1 is better than line 2
+
+############# Least Squares method ##############################
+
+## Step 1:
+# DV: mpg
+# IDV: wt
+
+## Step 2:
+mtcars.plot.scatter("wt","mpg")
+
+## Step 3:
+mtcars["wt"].cov(mtcars["mpg"])
+# By looking at covariance, we can't conclude whether the relationship is strong or weak
+
+mtcars["wt"].corr(mtcars["mpg"])
+# -0.867; strong negative correlation
+
+## Step 4
+# Formula: DV ~ IDV
+mt_mod1 = smf.ols("mpg ~ wt", data = mtcars).fit()
+mt_mod1.params
+# mpg = -5.344472*wt + 37.285126
+# For 1 tonne increase in wt, mpg decreases by 5.3 mpg
+# When wt = 0, mpg will 37.2; not possible practically
+
+X_mtcars = mtcars["wt"]
+X_mtcars = sm.add_constant(X_mtcars)
+Y_mtcars = mtcars["mpg"]
+mt_mod2 = sm.OLS(Y_mtcars,X_mtcars).fit()
+mt_mod2.params
+# mpg = -5.344472*wt + 37.285126
+
+
+## Step 5
+mt_mod1.rsquared
+# R2: 0.752; decent model
+
+fitted_mpg = -5.344472*mtcars["wt"] + 37.285126
+fitted_mpg = mt_mod1.predict(mtcars) # does the same as above line
+plt.scatter(mtcars["wt"],mtcars["mpg"])
+plt.scatter(mtcars["wt"],fitted_mpg, c = "red")
+
+def MAPE(actual,predicted):    
+    percent_error = (actual - predicted)/actual
+    abs_percent_error = abs(percent_error)
+    abs_percent_error = abs_percent_error.replace(np.inf,np.nan)
+    mean_absolute_percent_error = np.mean(abs_percent_error)
+    median_absolute_percent_error = np.nanmedian(abs_percent_error)
+    mape_res = pd.Series([mean_absolute_percent_error,
+                          median_absolute_percent_error],
+            index = ["Mean APE","Median APE"])
+    return(mape_res)
+MAPE(mtcars["mpg"],fitted_mpg) # 12.6% MAPE; 87.4% Accuracy
+
+mt_mod1.summary()
+# the variables are significant
+
+############### 
+
+catsdata = pd.read_csv("data/cats.csv")
+## Step 1
+# DV: Hwt (in grams)
+# IDV: Bwt (in kilograms)
+
+## Step 2
+catsdata.plot.scatter("Bwt","Hwt")
+
+## Step 3
+catsdata["Bwt"].corr(catsdata["Hwt"])
+# 0.804; Strong positive correlation
+
+## Step 4
+cat_model = smf.ols("Hwt ~ Bwt", data = catsdata).fit()
+cat_model.params
+# Hwt = 4.034*Bwt - 0.35
+
+## Step 5
+# For 1 Kg increase in Bwt, Hwt increases by 4.034 grams
+# If the Bwt is 0 Kg, Hwt will be -0.35gram
+fitted_hwt = 4.034*catsdata["Bwt"] - 0.35
+fitted_hwt = cat_model.predict(catsdata) # same as above line
+plt.scatter(catsdata["Bwt"],catsdata["Hwt"])
+plt.scatter(catsdata["Bwt"],fitted_hwt, c = "red")
+
+cat_model.rsquared
+# 0.6466; decent model
+
+MAPE(catsdata["Hwt"],fitted_hwt) # 11.2% MAPE
+
+cat_model.summary()
+# Bwt is significant
+# Intercept is insignificant
+
+# Building a no intercept model
+X_cat = catsdata["Bwt"]
+Y_cat = catsdata["Hwt"]
+cat_mod2 = sm.OLS(Y_cat,X_cat).fit()
+cat_mod2.params
+# Hwt = 3.907113*Bwt
+fitted_hwt = cat_mod2.predict(catsdata["Bwt"])
+
+#### Training - Test Split
+
+# Dividing the data to 70-30 split
+cats_train, cats_test = train_test_split(catsdata, test_size = 0.3)
+
+cats_model_tr = smf.ols("Hwt ~ Bwt", data = cats_train).fit()
+cats_model_tr.summary()
+# R2: 0.645
+
+# Evaluate model on training data
+hwt_pred_tr = cats_model_tr.predict(cats_train)
+MAPE(cats_train["Hwt"],hwt_pred_tr) # 11.2% MAPE
+
+# Evaluate model on testing data
+cats_model_tr.params
+hwt_pred_te =  4.063264*cats_test["Bwt"] - 0.537382
+hwt_pred_te = cats_model_tr.predict(cats_test["Bwt"]) # same as above line
+MAPE(cats_test["Hwt"],hwt_pred_te) # 10.9% MAPE
+
+################# Multiple Linear Regression ###########################
+cement_data = pd.read_csv("data/cement.csv")
+
+## Step 1
+# DV: y (heat evolved)
+# IDVs: x1, x2, x3, x4 (composition of key ingredients)
+
+## Step 2
+cement_data.plot.scatter("x1","y")
+for vari in cement_data.columns[:4]:
+    cement_data.plot.scatter(vari,"y")
+
+sns.pairplot(cement_data)
+
+## Step 3: Correlation
+cement_data["x1"].corr(cement_data["y"]) # 0.73; decent positive correlation
+cement_corr_matrix = cement_data.corr()
+# Decent positive correlation between x1 and y; 0.73
+# Strong positive correlation between x2 and y; 0.82
+# Weak negative correlation between x3 and y; -0.53
+# Strong negative correlation between x4 and y; -0.82
+
+## Step 4: Build Model
+cement_model_x1 = smf.ols("y ~ x1", data = cement_data).fit()
+
+# y = a*x1 + b*x2 + c*x3 + d*x4 + C
+cement_model_x1234 = smf.ols("y ~ x1 + x2 + x3 + x4", 
+                             data = cement_data).fit()
+cement_model_x1234.params
+# y = 1.55*x1 + 0.51*x2 + 0.1*x3 - 0.14*x4
+
+## Step 5: Evaluate; R2, MAPE
+cement_model_x1.summary()
+# R2: 0.534
+cement_model_x1234.summary()
+# Adj R2: 0.974
+# However p values are high.
+# Multi collinearity issue
+# x1 and x3 are dependent on each other
+# x2 and x4 are dependent on each other
+
+# Build combinatorial models
+# Pick the best model using R2/AdjR2
+cement_x1x2 = smf.ols("y~ x1 + x2", data = cement_data).fit()
+cement_x1x2.summary()
+# Adj R2: 0.974; 
+# p values are 0 variables are significant
+
+cement_x1x4 = smf.ols("y ~ x1 + x4", data = cement_data).fit()
+cement_x1x4.summary()
+# Adj R2: 0.967
+
+cement_x2x3 = smf.ols("y ~ x2 + x3", data = cement_data).fit()
+cement_x2x3.summary()
+# Adj R2: 0.816
+
+cement_x3x4 = smf.ols("y ~ x3 + x4", data = cement_data).fit()
+cement_x3x4.summary()
+# Adj R2: 0.922
+
+# Clearly x1-x2 is the best combination
+
+
+fitted_y_x1 = cement_model_x1.predict(cement_data)
+MAPE(cement_data["y"],fitted_y_x1) # 9.3% error
+
+fitted_y_x1234 = cement_model_x1234.predict(cement_data)
+MAPE(cement_data["y"],fitted_y_x1234) # 1.7% error
+
+fitted_y_x12 = cement_x1x2.predict(cement_data)
+MAPE(cement_data["y"],fitted_y_x12) # 2% error
+
+
+### Multiple Regression on cats data after encoding gender ##################
+
+# DV: Hwt
+# IDV: Bwt, gender
+
+catsdata.plot.scatter("Bwt","Hwt")
+sns.lmplot("Bwt", "Hwt", data = catsdata, fit_reg = False,hue = "Gender")
+
+gender_encoded = pd.get_dummies(catsdata["Gender"])
+catsdata2 = pd.concat([catsdata,gender_encoded],axis = 1)
+
+# Removing on of the levels as it is dependent on another
+ # if You know that a cat is Male, then you automatically know that it is not a female
+cats_multi_model = smf.ols("Hwt ~ Bwt + M", data =  catsdata2).fit()
+cats_multi_model.summary()
+# Adj R2 has come down
+# P value of M is insigificant
+# For this data, gender did not add any value
+
+################ Assignment 1 #############################################
+
+# Build multiple regression model on mtcars
+# DV: mpg
+# IDV: wt, gear, carb, hp,......
+
+############### Assignment 2 ##############################################
+
+## wgdata
+wgdata = pd.read_csv("data/wg.csv")
+# remove obs with missing values
+wgclean = wgdata.dropna()
+
+## Step 1
+# DV: wg
+# IDV: metmin; optionally consider gender and shift as additional variables
+
+## Step 2
+wgclean.plot.scatter("metmin","wg")
+sns.lmplot("metmin","wg", data = wgclean,
+           hue = "Gender", fit_reg = False)
+sns.lmplot("metmin","wg", data = wgclean,
+           hue = "Shift", fit_reg = False)
+
+## Step 3
+wgclean["metmin"].corr(wgclean["wg"])
+# Strong negative correlation
+
+## Step 4
+wg_train, wg_test = train_test_split(wgclean, test_size = 0.3,
+                                     random_state = 1234)
+
+## Simple Linear Model
+wg_simple_lin = smf.ols("wg ~ metmin", data = wgclean).fit()
+wg_simple_lin.params
+# wg = -0.018*metmin + 54.16
+
+## Step 5
+wg_simple_lin.summary()
+# R2: 0.821
+# p values close to 0; hence variables are significant
+fitted_wg = wg_simple_lin.predict(wg_train)
+plt.scatter(wg_train["metmin"],wg_train["wg"])
+plt.scatter(wg_train["metmin"],fitted_wg, c = "red")
+
+predicted_wg_simple_lin = wg_simple_lin.predict(wg_test)
+MAPE(wg_test["wg"],predicted_wg_simple_lin)
+# 45.7% Mean APE
+# 23.2% Median APE
+abs(70 - 65)/70 # 7.14% Error
+abs(10 - 5)/10 # 50% error
+# MAPEs could get higher because of outlier error points
+
+### Simple Linear Model
+# y = mX + C
+
+### Simple Non Linear Model
+# y = aX^2 + bX + C #2nd order polynomial equation
+# y = aX^3 + bX^2 + cX + D; 3rd order polynomial
+x = np.arange(1,100)
+y = 5*x + 10 # linear equation
+y = 5*x**2 + 10*x + 50 # 2nd order non linear
+y = -5*x**2 + 10*x + 50 # 2nd order non linear
+plt.scatter(x,y)
+
+# wg = a*metmin + b*metmin^2 + C
+wg_simple_nonlin = smf.ols("wg ~ metmin + np.power(metmin,2)",
+                          data = wgclean).fit()
+wg_simple_nonlin.params
+# wg = -0.05*metmin + 0.000010*metmin^2 + 91.165
+
+wg_simple_nonlin.summary()
+# Adj R2: 0.973
+fitted_wg_lin = wg_simple_lin.predict(wg_train)
+fitted_wg_nonlin = wg_simple_nonlin.predict(wg_train)
+
+plt.scatter(wg_train["metmin"],wg_train["wg"])
+plt.scatter(wg_train["metmin"],fitted_wg_lin, c = "red")
+plt.scatter(wg_train["metmin"],fitted_wg_nonlin, c = "green")
+
+predicted_wg_simple_nonlin = wg_simple_nonlin.predict(wg_test)
+MAPE(wg_test["wg"],predicted_wg_simple_nonlin)
+# 15.5% Mean APE
+# 8.18% Median APE
+wgdata["wg"].isna()
+
+########### Variable Transformation
+## Log transformation
+wgclean["log_wg"] = np.log(wgclean["wg"])
+wgclean["log_metmin"] = np.log(wgclean["metmin"])
+wgclean.plot.scatter("metmin","wg") # Linear - Linear
+wgclean.plot.scatter("log_metmin","wg") # Linear - Log
+wgclean.plot.scatter("metmin","log_wg") # Log - Linear
+wgclean.plot.scatter("log_metmin","log_wg") # Log - Log
+
+wg_log_linear = smf.ols("log_wg ~ metmin", data = wgclean).fit()
+wg_log_linear.params
+# log(wg) = -0.001159*metmin + 4.88
+# wg = exp(-0.001159*metmin + 4.88)
+wg_log_linear.summary()
+predicted_logwg = wg_log_linear.predict(wg_test)
+# R2: 0.984
+predicted_wg = np.exp(predicted_logwg)
+MAPE(wg_test["wg"],predicted_wg)
+# 6.4% Mean APE
+# 6% Median APE
+
+gender_encoded = pd.get_dummies(wgclean["Gender"])
+wgclean2 = pd.concat([wgclean,gender_encoded],axis = 1)
+wg_multi_lin = smf.ols("wg ~ metmin + M", data = wgclean2).fit()
+wg_multi_lin.summary()
+# Adj R2: 0.822
+# No additional value from gender
+
+############### Availability Assignment ########################
+availability = pd.read_csv("data/availability.csv")
+
+## Step 1
+# DV: AVailability
+# IDV: Bid Price, Spot Price
+# Spot Price is a ordinal categorical variable
+
+## Step 2
+availability.plot.scatter("Bid","Availability")
+sns.lmplot("Bid","Availability", data = availability,
+           hue = "Spotprice", fit_reg = False)
+
+## Step 3
+availability.corr()
+# Bid price has decent correlation with availability
+# Weak correlation between Spotprice and availability; can support only as an additional variable
+# No multi collinearity issue seen
+
+## Step 4, 5
+# Train - Test Split
+avail_train, avail_test = train_test_split(availability, 
+                                           test_size = 0.3,
+                                     random_state = 1234)
+### Simple Linear
+avail_simple_lin_model = smf.ols("Availability ~ Bid", data = avail_train).fit()
+avail_simple_lin_model.summary()
+# R2: 0.407; poor R2
+# Availability  = 49.99*Bid - 0.6215
+avail_fitted_simple_lin = avail_simple_lin_model.predict(avail_train)
+plt.scatter(avail_train["Bid"],avail_train["Availability"])
+plt.scatter(avail_train["Bid"],avail_fitted_simple_lin, c = "red")
+
+avail_pred_test_simple_lin = avail_simple_lin_model.predict(avail_test)
+MAPE(avail_test["Availability"],avail_pred_test_simple_lin)
+# 341.6% Mean APE
+# 26.3% Median APE
+
+### Simple Non Linear
+avail_simple_nonlin_model = smf.ols("Availability ~ Bid + np.power(Bid,2)", 
+                                    data = avail_train).fit()
+avail_simple_nonlin_model.summary()
+## Adj R2: 0.630
+avail_fitted_simple_nonlin = avail_simple_nonlin_model.predict(avail_train)
+plt.scatter(avail_train["Bid"],avail_train["Availability"])
+plt.scatter(avail_train["Bid"],avail_fitted_simple_lin, c = "red")
+plt.scatter(avail_train["Bid"],avail_fitted_simple_nonlin, c = "green")
+avail_pred_test_simple_nonlin = avail_simple_nonlin_model.predict(avail_test)
+MAPE(avail_test["Availability"],avail_pred_test_simple_nonlin)
+# 157.7% Mean APE
+# 19.1% Median APE
+
+### Multiple Non Linear
+avail_multi_nonlin_model = smf.ols("Availability ~ Bid + np.power(Bid,2) + Spotprice", 
+                                    data = avail_train).fit()
+avail_multi_nonlin_model.summary()
+## Adj R2: 0.791
+# Availability = 378*Bid - 6101*Bid^2 - 57.1*Spotprice - 3.57
+
+avail_pred_test_multi_nonlin = avail_multi_nonlin_model.predict(avail_test)
+MAPE(avail_test["Availability"],avail_pred_test_multi_nonlin)
+# 184% Mean APE
+# 16.7% Median APE
+
+
+############################# Clustering ##################
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import scale
+from sklearn.cluster import KMeans
+
+# Step 0: Data Preparation, missing value treatment, outlier treatment
+# Step 1: Scale the data if needed
+# Step 2: Exploratory analysis
+# Step 3: Develop clusters
+  # Choose optimal K
+     # Using business requirement
+     # Elbow curve method; within cluster distance
+# Step 4: Profile the clusters
+
+####### Importance of Scaling #####################
+# age and income of 5 people P1, P2, P3, P4 and P5
+age = [32,45,28,60,55]
+income = [25000,55000,35000,18000,42000]
+ht = [175,168,155,189,165]
+
+
+# Euclidean distance can be used to calculate distance in a multi dimensinal space
+plt.scatter(age,income)
+
+p1p2 = ((32 - 45)**2 + (25000 - 55000)**2)**0.5 # 30000
+p1p3 = ((32 - 28)**2 + (25000 - 35000)**2)**0.5 # 10000
+p1p4 = ((32 - 60)**2 + (25000 - 18000)**2)**0.5 # 7000
+p1p5 = ((32 - 55)**2 + (25000 - 42000)**2)**0.5 #17000
+
+# p1p4 has less distance compared to p1p3 which is counter intuitive
+
+# Distance measure can be dominated by the variable with high scale
+p1p2 = ((32 - 45)**2 + (25 - 55)**2)**0.5 # 32.6
+p1p3 = ((32 - 28)**2 + (25 - 35)**2)**0.5 # 10.7
+p1p4 = ((32 - 60)**2 + (25 - 18)**2)**0.5 # 28.8
+p1p5 = ((32 - 55)**2 + (25 - 42)**2)**0.5 #28.6
+# p1p3 has the least distance which makes sense
+
+age_scaled = scale(age)
+income_scaled = scale(income)
+
+f, (ax1,ax2) = plt.subplots(1,2)
+ax1.scatter(age,income)
+ax2.scatter(age_scaled,income_scaled)
+
+#######################################################
+irisdata = pd.read_csv("data/iris.csv")
+newiris = irisdata.iloc[:,:4]
+
+## Step 1: 
+# Scaling not needed
+# S.L, S.W, P.L and P.W in cms as features
+
+## Step 2:
+newiris.describe()
+newiris.plot.scatter("Petal.Length","Petal.Width")
+sns.pairplot(newiris)
+# Dimensionality is a curse
+
+## Step 3
+irisclust = KMeans(n_clusters = 2,
+                   random_state = 1234).fit(newiris)
+irisclust.labels_
+irisclust.n_iter_
+irisclust.inertia_ # within cluster distance: 152.3
+irisclust_k3 = KMeans(n_clusters = 3,
+                   random_state = 1234).fit(newiris)
+irisclust_k3.inertia_ # within cluster distance: 78.85
+iris_withlabel = newiris.copy()
+iris_withlabel["Label_K2"] = irisclust.labels_
+iris_withlabel["Label_K3"] = irisclust_k3.labels_
+
+within_clust_dist = pd.Series([0.0]*20, index = range(1,21))
+for k in range(1,21):
+    irisclust_anyK = KMeans(n_clusters = k,
+                   random_state = 1234).fit(newiris)
+    within_clust_dist[k] = irisclust_anyK.inertia_
+
+plt.plot(within_clust_dist)
+plt.xlim([0,5])
+
+# Elbow point at k = 2
+
+## Step 4
+sns.lmplot("Petal.Length","Petal.Width",hue = "Label_K2",
+           data = iris_withlabel, fit_reg = False)
+sns.lmplot("Sepal.Length","Sepal.Width",hue = "Label_K2",
+           data = iris_withlabel, fit_reg = False)
+iris_cluster_profile = iris_withlabel.groupby("Label_K2").agg(np.mean)
+
+# Cluster 0: Less S.L, P.L and P.W; High S.W
+# Cluster 1: High S.L, P.L and P.W; Less S.W
+
+
+sns.lmplot("Petal.Length","Petal.Width",hue = "Label_K3",
+           data = iris_withlabel, fit_reg = False)
+sns.lmplot("Sepal.Length","Sepal.Width",hue = "Label_K3",
+           data = iris_withlabel, fit_reg = False)
+iris_cluster_profile_k3 = iris_withlabel.groupby("Label_K3").agg(np.mean)
+
+#################### Assignment ##########################
+#############3 wine data set ################################
+
+winedata = pd.read_csv("data/wine.data", header = None)
+winedata.columns = ["Wine_Class", "Alcohol","Malic_acid","Ash","Alcalinity_of_ash",
+                       "Magnesium","Total_phenols","Flavanoids","Nonflavanoid_phenols",
+                       "Proanthocyanins","Color_intensity","Hue","OD280_OD315",
+                       "Proline"]
+newwine = winedata.iloc[:,1:]
+
+newwine.apply(np.mean)
+
+## Step 1
+winescaled = pd.DataFrame(scale(newwine),
+                columns = newwine.columns)
+winescaled.apply(np.mean)
+
+## Step 2
+sns.pairplot(newwine)
+
+## Step 3
+
+within_clust_dist = pd.Series([0.0]*20, index = range(1,21))
+for k in range(1,21):
+    wineclust_anyK = KMeans(n_clusters = k,
+                   random_state = 1234).fit(winescaled)
+    within_clust_dist[k] = wineclust_anyK.inertia_
+plt.plot(within_clust_dist)
+plt.xlim([0,5])
+
+# Elbow point at k = 3
+wineclust = KMeans(n_clusters = 3, random_state = 1234).fit(winescaled)
+
+## Step 4
+newwine["Label"] = wineclust.labels_
+sns.lmplot("Color_intensity","Flavanoids",
+           data = newwine, hue = "Label", fit_reg = False)
+sns.lmplot("OD280_OD315","Proline",
+           data = newwine, hue = "Label", fit_reg = False)
+
+
+wine_clu_profile = newwine.groupby("Label").apply(np.mean)
+
+##
+# CLuster 0: High Magnesium, Total Phenols Flavanoids, OD280; Less Proline
+# Cluster 1: High Malic Acid,Non Flavanoids, Color intensity, Proline ; Less Total Phenols, Flavanoids, Proanthocyanins
+# Cluster 2: Less Magnesium, Color intensity
+
+############################# Dimensionality Reduction #####
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import scale
+import statsmodels.formula.api as smf
+from sklearn.cluster import KMeans
+
+
+
+# Step 1: Scale the data if needed
+# Step 2: Exploratory ANalysis
+   # Correlation
+     # If there is strong correlation, then dimensions can be significantly reduced
+     # If the correlation is weak, not much compression can be expected
+   # Scatter Plots
+# Step 3: Build PCA model and project the data in new dimension space
+# Step 4: Use new dimensions for downstream process (visualization, clustering, regression, classification)
+# Step 5: Factor Analysis
+   
+irisdata = pd.read_csv("data/iris.csv")
+newiris = irisdata.iloc[:,:4]
+
+## Step 1:
+# Scaling not needed as variables are in comparable measurement units
+
+## Step 2
+newiris.plot.scatter("Petal.Length", "Petal.Width")
+newiris.plot.scatter("Petal.Length", "Sepal.Length")
+sns.pairplot(newiris)
+## Dimensionality is a curse
+
+# Can you select just 2 representative features from S.L, S.W, P.L and P.W?
+iriscorr = newiris.corr()
+
+# Petal Length is highly correlated with Sepal Length and Petal Width
+# Sepal Width is not correlated with other
+
+# Hence Petal Length and Sepal width are sufficient to capture most of the information
+newiris.plot.scatter("Petal.Length", "Sepal.Width")
+
+## Step 3
+irispca = PCA().fit(newiris)
+irispca.components_
+irispca.explained_variance_ratio_
+# Dim1 captures 92.4% of variance
+# Dim2 captures 5.3% of variance
+# Dim3 captures 1.7% of variance
+# Dim4 captures 0.5% of variance
+sum(irispca.explained_variance_ratio_)  # sums to 100%
+# with the first 2 dimensions, 97.7% of variance can be captured
+np.cumsum(irispca.explained_variance_ratio_)
+irispca = PCA(n_components = 2).fit(newiris)
+irispca.components_.T # D x K matrix
+
+iris_projected = pd.DataFrame(irispca.transform(newiris),
+                              columns = ["Dim1","Dim2"])
+
+### Step 4
+
+## PCA as a pre-step before visualization
+iris_projected.plot.scatter("Dim1","Dim2")
+iris_projected.corr()
+# There will be no correlation between new dimensions
+
+## PCA as pre-step before clustering
+irisclust = KMeans(n_clusters  = 3).fit(iris_projected)
+iris_projected["Label"] = irisclust.labels_
+sns.lmplot("Dim1","Dim2", data = iris_projected,
+           hue = "Label", fit_reg = False)
+# Cluster 0: High in Dim 1 and High in Dim 2
+# Cluster 1: Middling in Dim1 and Less in Dim2
+# Cluster 2: Less in Dim1
+
+## Step 5
+factor_loadings = pd.DataFrame(irispca.components_.T,
+                index = newiris.columns,
+                columns = ["Dim1","Dim2"])
+# Dim1 = 0.36*S.L - 0.085*S.W + 0.86*P.L + 0.36*P.W
+# Dim 1 is dominated by P.L
+
+# Dim2 = 0.66*S.L + 0.73*S.W - 0.17*P.L - 0.075*P.W
+# Dim2 is dominated by S.W followed by S.L
+
+# Cluster 0: High in P.L and High in S.W
+# Cluster 1: Middling in P.L and Less in  S.W
+# Cluster 2: Less in P.L
+
+################# mtcars ####################################
+## Using PCA as a pre-step before regression
+mtcars = pd.read_csv("data/mtcars.csv")
+
+## Step 1
+mtcars_idv = mtcars.iloc[:,1:]
+mtcars_idv.apply(np.mean) # each variable is of different scale
+mtcars_idv.boxplot() # disp and hp dominates other variables
+mtcars_idv_scaled = pd.DataFrame(scale(mtcars_idv),
+                                 columns = mtcars_idv.columns)
+mtcars_idv_scaled.boxplot() # all variables are given importance
+mtcars_idv_scaled.apply(np.mean)
+
+## Step 2
+mtcars_corr = mtcars_idv.corr()
+mtcars_corr_scaled = mtcars_idv_scaled.corr()
+# Scaling do not impact relationship between variable
+
+## Step 3
+mtcars_idv_pca = PCA().fit(mtcars_idv_scaled)
+mtcars_idv_pca.explained_variance_ratio_
+np.cumsum(mtcars_idv_pca.explained_variance_ratio_)
+# 3 dimensions capture 90% of variance
+mtcars_idv_pca = PCA(n_components = 3).fit(mtcars_idv_scaled)
+
+mtcars_idv_projected = pd.DataFrame(
+        mtcars_idv_pca.transform(mtcars_idv_scaled),
+        columns = ["Dim1","Dim2","Dim3"])
+mtcars_idv_projected["mpg"] = mtcars["mpg"]
+
+mtcars_reg = smf.ols("mpg ~ Dim1 + Dim2 + Dim3",
+                    data = mtcars_idv_projected).fit()
+mtcars_reg.summary()
+# p value of Dim 2 is high
+mtcars_idv_projected.corr() # Dim2 has weak correlation with mpg
+mtcars_reg = smf.ols("mpg ~ Dim1 + Dim3",
+                    data = mtcars_idv_projected).fit()
+mtcars_reg.summary()
+# Adj R2: 0.843
+mtcars_reg.params
+# mpg = 2.2*Dim1 - 1.2*Dim2 + 20.09
+mtcars_factor_loadings = pd.DataFrame(
+        mtcars_idv_pca.components_.T,
+                index = mtcars_idv.columns,
+                columns = ["Dim1","Dim2","Dim3"])
+
+################### Assignment #################################
+# Wine data has 13 attributes
+# Reduce it to something less
+# Do clustering on new reduced dimension
+winedata = pd.read_csv("data/wine.data", header = None)
+winedata.columns = ["Wine_Class", "Alcohol","Malic_acid","Ash","Alcalinity_of_ash",
+                       "Magnesium","Total_phenols","Flavanoids","Nonflavanoid_phenols",
+                       "Proanthocyanins","Color_intensity","Hue","OD280_OD315",
+                       "Proline"]
+newwine = winedata.iloc[:,1:]
+winescaled = pd.DataFrame(scale(newwine),
+                columns = newwine.columns)
+## Step 2
+winecorr = newwine.corr()
+newwine.plot.scatter("Flavanoids","Total_phenols")
+
+## Step 3
+winePCA = PCA().fit(winescaled)
+wine_projected = winePCA.transform(winescaled)
+winePCA.explained_variance_ratio_
+# Dim1 captures 36.19% of variance
+# Dim2 captures 19.2% of variance
+np.cumsum(winePCA.explained_variance_ratio_)
+# With 5 dimensions, 80% of variance is explained
+winePCA = PCA(n_components = 5).fit(winescaled)
+wine_projected = pd.DataFrame(winePCA.transform(winescaled),
+                columns = ["Dim" + str(i) for i in range(1,6)])
+
+
+wineclust_pca = KMeans(n_clusters = 3, random_state = 1234).fit(wine_projected)
+wine_projected["Labels"] = wineclust_pca.labels_
+sns.lmplot("Dim1","Dim2", data = wine_projected,
+           hue = "Labels", fit_reg = False)
+sns.lmplot("Dim3","Dim4", data = wine_projected,
+           hue = "Labels", fit_reg = False)
+# Cluster 0: High in Dim1, Less in Dim2
+# Cluster 1: Less in Dim1, Less in Dim2
+# Cluster 2: High in Dim2
+
+## Step 5
+wine_factor_loadings = pd.DataFrame(winePCA.components_.T,
+                        index = newwine.columns,
+                        columns = ["Dim" + str(i) for i in range(1,6)])
+
+# Dim1 = 0.14*Alcohol - 0.25*Malic_Acid + ...... + 0.29*Proline
+# Dim2 = -0.48*Alcohol + .................. - 0.36*Proline
+
+# Dim1 is dominated by Flavanids, Totel Phenols, OD280
+# Dim2 is dominated (negative) by Color intensity, Alcohol, Proline
+
+# Cluster 0: High in Flavanids, Totel Phenols, OD280; High in Color intensity, Alcohol, Proline
+# Cluster 1: Less in Flavanids, Totel Phenols, OD280, High in Color intensity, Alcohol, Proline
+# Cluster 2: Less in Color intensity, Alcohol, Proline
+
+############################# Classification ##############
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.metrics import accuracy_score, roc_curve, auc
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+#from sklearn.cross_validation import train_test_split, cross_val_score
+
+# Step 0: Data Preparation, CLeaning etc.
+# Step 1: Identify DV and IDV
+    # For KNN If IDVs are of different measurement units, scale them
+# Step 2: Exploratory Analysis
+# Step 3:Building Model
+    # Train - Test - Validate Split
+    # KNN
+    # Decision Tree
+    # Ensemble Methods
+        # Bagging (Random Forest)
+        # Boosing (Gradient Boosting)
+    # Logsitic Regression
+# Step 4: Model Evaluation
+    # Confusion Matrix
+    # Accuracy of Training and Test Data
+       # Ideally training and test accuracy should be balanced to avoid overfitting
+    # TPR, FPR, ROC, AUC
+    # Cross validation on multiple train-test splits
+      # k fold cross validation - every data point would have become test data at least once
+        # 5 fold cross validation is a popular option
+          # model building and validation happens 5 times with 80-20 split
+    # Parameter tuning
+    # Rebuild the model with all data
+# Step 5: Go live and predict
+    
+
+irisdata = pd.read_csv("data/iris.csv")
+
+## Step 1
+# DV: Species
+# IDV: S.L, S.W, P.L, P.W
+
+## Step 2
+variable_separability = irisdata.groupby("Species").apply(np.mean)
+# P.L and P.W is very less for Setosa
+# P.L and P.W is high for Virginica
+# S.W is less for Versicolor and other features middling
+for i in irisdata.columns[:4]:
+    irisdata.boxplot(column = i, by = "Species")
+
+sns.lmplot("Petal.Length","Sepal.Width", data = irisdata,
+           hue = "Species", fit_reg = False)
+
+## Step 3
+X_iris_train, X_iris_test, y_iris_train, y_iris_test = \
+    train_test_split(irisdata.iloc[:,:4], # IDVs
+                     irisdata["Species"], # DV
+                     test_size = 0.3, random_state = 1234)
+# Building model on training data
+iris_knn3 = KNeighborsClassifier(n_neighbors = 3).fit(
+        X_iris_train, y_iris_train)
+iris_knn1 = KNeighborsClassifier(n_neighbors = 1).fit(
+        X_iris_train, y_iris_train)
+iris_dtree = DecisionTreeClassifier(max_depth = 2).fit(
+        X_iris_train, y_iris_train)
+
+## Step 4:
+pred_species_tr_knn3 = iris_knn3.predict(X_iris_train)
+pd.crosstab(y_iris_train, pred_species_tr_knn3)
+101/105 # 96.1% accuracy on training data
+
+pred_species_tr_knn1 = iris_knn1.predict(X_iris_train)
+pd.crosstab(y_iris_train, pred_species_tr_knn1)
+105/105 # 100% accuracy on training data
+
+pred_species_te_knn3 = iris_knn3.predict(X_iris_test)
+pd.crosstab(y_iris_test, pred_species_te_knn3)
+44/45 # 97.7% accuracy on test data
+
+pred_species_te_knn1 = iris_knn1.predict(X_iris_test)
+pd.crosstab(y_iris_test, pred_species_te_knn1)
+44/45 # 97.7% accuracy on test data
+# Inbuilt function for calculating accuracy
+accuracy_score(y_iris_test, pred_species_te_knn1)
+
+pred_species_te_dtree = iris_dtree.predict(X_iris_test)
+pd.crosstab(y_iris_test, pred_species_te_dtree)
+accuracy_score(y_iris_test, pred_species_te_dtree)
+
+## Parameter tuning
+for k in range(1,21):
+    print("***************************************")
+    print("Number of Neigbors: ",k)
+    iris_knn_anyK = KNeighborsClassifier(n_neighbors = k).fit(
+        X_iris_train, y_iris_train)
+    pred_species_tr_knn_anyk = iris_knn_anyK.predict(X_iris_train)
+    pred_species_te_knn_anyk = iris_knn_anyK.predict(X_iris_test)
+    print("Train Accuracy: ",
+          accuracy_score(y_iris_train, pred_species_tr_knn_anyk))
+    print("Test Accuracy: ",
+          accuracy_score(y_iris_test, pred_species_te_knn_anyk))
+
+# K = 2 looks to be an optimal number of neighbors
+
+## Results change based on the training and test data split
+
+## Cross Validation
+np.mean(cross_val_score(KNeighborsClassifier(n_neighbors = 3),
+                irisdata.iloc[:,:4], # IDVs
+                irisdata["Species"], # DVs
+                cv = 5 # 5 fold cross validation
+                ))
+# 96.6% cross validated accuracy
+
+np.mean(cross_val_score(DecisionTreeClassifier(max_depth = 3),
+                irisdata.iloc[:,:4], # IDVs
+                irisdata["Species"], # DVs
+                cv = 5 # 5 fold cross validation
+                )) # 97.3% cross validated accuracy
+
+# Pramater tuning based on cross validated accuracy
+for k in range(1,11):
+    print("***************************************")
+    print("Number of Neigbors: ",k)
+    print(np.mean(cross_val_score(
+            KNeighborsClassifier(n_neighbors = k),
+                irisdata.iloc[:,:4], # IDVs
+                irisdata["Species"], # DVs
+                cv = 5)))
+#  k = 6 looks optimal with a cross validated accuracy of 98%
+
+for d in range(1,6):
+    print("***************************************")
+    print("Max Depth: ",d)
+    print(np.mean(cross_val_score(
+            DecisionTreeClassifier(max_depth = d),
+                irisdata.iloc[:,:4], # IDVs
+                irisdata["Species"], # DVs
+                cv = 5)))
+# Max Depth 3 seems to be optimal configuration
+
+## Random Forest
+for nest in range(5,15):
+    print("No of estimators: ", nest)
+    for d in range(1,6):
+        print("***************************************")
+        print("Max Depth: ",d)
+        print(np.mean(cross_val_score(
+            RandomForestClassifier(n_estimators = nest,
+                                   max_depth = d),
+                irisdata.iloc[:,:4], # IDVs
+                irisdata["Species"], # DVs
+                cv = 5)))
+
+## Gradient Boosting
+for nest in range(100,1000,100):
+    print("No of estimators: ", nest)
+    for d in range(1,6):
+        print("***************************************")
+        print("Max Depth: ",d)
+        print(np.mean(cross_val_score(
+            GradientBoostingClassifier(n_estimators = nest,
+                                   max_depth = d),
+                irisdata.iloc[:,:4], # IDVs
+                irisdata["Species"], # DVs
+                cv = 5)))
+
+
+############# Wine Data set ####################################     
+winedata = pd.read_csv("data/wine.data", header = None)
+winedata.columns = ["Wine_Class", "Alcohol","Malic_acid","Ash","Alcalinity_of_ash",
+                       "Magnesium","Total_phenols","Flavanoids","Nonflavanoid_phenols",
+                       "Proanthocyanins","Color_intensity","Hue","OD280_OD315",
+                       "Proline"]
+## Step 1
+# DV: Wine Class (Class 1, 2, 3)
+# IDV: Alcohol,......., Proline
+
+############# Diabetes Data #####################################
+
+diabetes_data = pd.read_csv("data/diabetes_data.csv")
+
+## Step 1
+# DV: Class (1 - diabetic, 0 - Non diabetic)
+# IDV: Plasma glucose concentration, Diastolic Blood Pressure,...., Age
+
+## Step 2
+for i in diabetes_data.columns[:8]:
+    diabetes_data.boxplot(column = i, by = "Class")
+
+diabetes_corr = diabetes_data.corr()
+
+sns.lmplot("Plasma glucose concentration","BMI",
+           data = diabetes_data, hue = "Class", fit_reg = False)
+
+## Step 3
+X_diab_train, X_diab_test, y_diab_train, y_diab_test = \
+    train_test_split(diabetes_data.iloc[:,:8], # IDVs
+                     diabetes_data["Class"], # DV
+                     test_size = 0.3, random_state = 1234)
+# Building model on training data
+diab_knn3 = KNeighborsClassifier(n_neighbors = 3).fit(
+        X_diab_train, y_diab_train)
+pred_class_knn3 = diab_knn3.predict(X_diab_test)
+pd.crosstab(y_diab_test,pred_class_knn3)
+# Out of 85 non diabetic patients, 64 correctly diagnosed and 21 mis-diagnosed as diabetic
+# Out of 33 diabetic patients, 23 correctly diagnosed and 10 mis diagnosed as non-diabetic
+
+accuracy_score(y_diab_test,pred_class_knn3) # 73.72
+
+# Pramater tuning based on cross validated accuracy
+for k in range(1,11):
+    print("***************************************")
+    print("Number of Neigbors: ",k)
+    print(np.mean(cross_val_score(
+            KNeighborsClassifier(n_neighbors = k),
+                diabetes_data.iloc[:,:8], # IDVs
+                diabetes_data["Class"], # DVs
+                cv = 5)))
+
+############3 Logistic Regression
+diab_logit_model = LogisticRegression().fit(X_diab_train,y_diab_train)
+diab_pred_prob = diab_logit_model.predict_proba(X_diab_test)
+diab_pred_class = diab_logit_model.predict(X_diab_test)
+# By default predict function applies a cutoff of 0.5
+diab_prob_vs_class = np.column_stack([diab_pred_prob,diab_pred_class])
+pd.crosstab(y_diab_test,diab_pred_class)
+
+accuracy_score(y_diab_test,diab_pred_class) 
+# Overall accuracy is 79.6%
+# FALSE POSITIVE: Out of 85 non diabetic patients, 11 got misclassified as diabetic
+FPR = 11/85 # 12.9% of non-diabtic patients are incorrectly diagnosed as diabetic
+# TRUE POSITIVE: Out of 33 diabetic patients, 20 got correctly classified
+TPR = 20/33 # 60% of diabetic patients are correctly detected
+
+### Reducing threshold to 0.3 to increase TPR
+diab_pred_prob_class1 = diab_pred_prob[:,1]
+diab_pred_class = np.zeros(len(diab_pred_prob_class1))
+diab_pred_class[diab_pred_prob_class1 > 0.3] = 1
+pd.crosstab(y_diab_test,diab_pred_class)
+accuracy_score(y_diab_test,diab_pred_class) 
+# Overall accuracy is 70.3%
+# TRUE POSITIVE: Out of 33 diabetic, 29 got correctly classified
+TPR = 29/33 # 87.8% of diabetic patients are correctly detected
+# FALSE POSITIVE: Out of 85 non diabetic patients, 31 got misclassified as diabetic
+FPR = 31/85 # 36.4% of non-diabtic patients are incorrectly diagnosed as diabetic
+
+### Increase threshold to 0.7 and decrease FPR
+diab_pred_class = np.zeros(len(diab_pred_prob_class1))
+diab_pred_class[diab_pred_prob_class1 > 0.7] = 1
+pd.crosstab(y_diab_test,diab_pred_class)
+accuracy_score(y_diab_test,diab_pred_class) 
+# Overall accuracy is 76.2%
+# TRUE POSITIVE: Out of 33 diabetic, only 8 got correctly classified
+TPR = 8/33 # 24.2% of diabetic patients are correctly detected
+# FALSE POSITIVE: Out of 85 non diabetic patients, 3 got misclassified as diabetic
+FPR = 3/85 # 3.5% of non-diabtic patients are incorrectly diagnosed as diabetic
+
+############## ROC Curve ####################################################
+
+## Receiver Operating Characteristics Curve
+diab_fpr, diab_tpr, diab_thresholds = roc_curve(y_diab_test, 
+                                                diab_pred_prob_class1)
+plt.plot(diab_fpr,diab_tpr)
+plt.xlabel("FPR")
+plt.ylabel("TPR")
+
+####### AUC (Area under the curve)
+# AUC = 0.5; Bad model
+# AUC = 1; Ideal model
+auc(diab_fpr,diab_tpr) # 0.83
+
+
+######### APPENDIX: Manual Rules for Iris ########################
+"""
+if (P.W > 5) then Setosa
+elif (P.W < 5 and S.L > 3) then versicolor
+elif () then virginica
+"""
+"""
+ Rajkumar
+P.W <> 0.1 - 0.6 -> Setosa
+P.W <> 1 - 1.8 -> Versicolor
+P.W <> 1.8 - 2.5 -> Virginica
+"""
+irisdata_with_manual_label = irisdata.copy()
+irisdata_with_manual_label["Rajkumar"] = "something"
+irisdata_with_manual_label.loc[
+        (irisdata["Petal.Width"] >= 0.1) & 
+        (irisdata["Petal.Width"] < 0.6),"Rajkumar"] = "setosa"
+irisdata_with_manual_label.loc[
+        (irisdata["Petal.Width"] >= 1) & 
+        (irisdata["Petal.Width"] < 1.8),"Rajkumar"] = "versicolor"
+irisdata_with_manual_label.loc[
+        irisdata["Petal.Width"] >= 1.8,"Rajkumar"] = "virginica"
+        
+        
+(irisdata_with_manual_label["Species"] == irisdata_with_manual_label["Rajkumar"]).sum()
+143/150 # 95.33%
+pd.crosstab(irisdata_with_manual_label["Species"],
+            irisdata_with_manual_label["Rajkumar"])
+
+
+from sklearn.tree import DecisionTreeClassifier
+iris_dtree = DecisionTreeClassifier(max_depth = 2).fit(
+        X_iris_train, y_iris_train)
+pred_species_te_dtree = iris_dtree.predict(X_iris_test)
+pd.crosstab(y_iris_test, pred_species_te_dtree)
+accuracy_score(y_iris_test, pred_species_te_dtree)
+np.mean(cross_val_score(DecisionTreeClassifier(max_depth = 3),
+                irisdata.iloc[:,:4], # IDVs
+                irisdata["Species"], # DVs
+                cv = 5 # 5 fold cross validation
+                )) # 97.3% cross validated accuracy
+
+for d in range(1,6):
+    print("***************************************")
+    print("Max Depth: ",d)
+    print(np.mean(cross_val_score(
+            DecisionTreeClassifier(max_depth = d),
+                irisdata.iloc[:,:4], # IDVs
+                irisdata["Species"], # DVs
+                cv = 5)))
+# Max Depth 3 seems to be optimal configuration
+    
+############################# Text Analytics ##############
+import nltk # natural language toolkit
+import pandas as pd
+import numpy as np
+import pickle
+
+from sklearn.feature_extraction.text import CountVectorizer,TfidfVectorizer
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from textblob import TextBlob
+
+
+#nltk.download()
+
+###### NLP (Natural Language Processing) ###########################
+## Text, Speech, Audio, Image, Video
+
+################# Tokenization ##############################
+
+sent = "this is python class"
+sent.split()
+
+nltk.tokenize.word_tokenize(sent)
+
+twt = "@PMOffice: Narendra Modi is visiting Kanchipuram on Tuesday"
+nltk.tokenize.TweetTokenizer().tokenize(twt)
+nltk.tokenize.TweetTokenizer(preserve_case = False).tokenize(twt)
+nltk.tokenize.TweetTokenizer(preserve_case = False,
+                             strip_handles = True).tokenize(twt)
+
+sent2 = "this life is 100 times worser than 5 years back !!??"
+nltk.tokenize.RegexpTokenizer("\w+").tokenize(sent2) # alpha numeric
+nltk.tokenize.RegexpTokenizer("\d+").tokenize(sent2)
+nltk.tokenize.RegexpTokenizer("\D+").tokenize(sent2)
+
+########### Removing Stop words ################################
+# a, is, the
+nltk_stopwords_corpus = nltk.corpus.stopwords
+nltk_stopwords_corpus.fileids()
+eng_stopwords = nltk_stopwords_corpus.words('english')
+german_stopwords = nltk_stopwords_corpus.words('german')
+
+sent = "this is a great session which I can learn"
+sent_tokenized = nltk.tokenize.word_tokenize(sent)
+sent_stopword_removed = [i for i in sent_tokenized if i.lower() not in eng_stopwords]
+print(sent_stopword_removed)
+
+########### Machine Learning models on Text Data #############
+
+############ Text Classification ############################
+tr_tweets = ['I love this car',
+    'This view is amazing',
+    'I feel great this morning',
+    'I am so excited about the concert',
+    'He is my best friend',
+    'I do not like this car',
+    'This view is horrible',
+    'I feel tired this morning',
+    'I am not looking forward to the concert',
+    'He is my enemy']
+
+tr_sentiment = ['positive','positive','positive','positive','positive',
+				'negative', 'negative', 'negative', 'negative', 'negative']
+
+tweets_with_sentiment = pd.DataFrame({
+        "Tweets": tr_tweets,
+        "Sentiment": tr_sentiment})
+
+## Information Retrieval
+
+###### Term Frequency (TF)
+vectorizer1 = CountVectorizer()
+X1 = vectorizer1.fit_transform(tr_tweets)
+print(vectorizer1.get_feature_names())
+len(vectorizer1.get_feature_names()) # 28 unique terms
+print(X1)
+X1_mat = X1.toarray()
+
+##### Term frequency (TF) after removing stop words
+vectorizer2 = CountVectorizer(stop_words = 'english')
+X2 = vectorizer2.fit_transform(tr_tweets)
+print(vectorizer2.get_feature_names())
+len(vectorizer2.get_feature_names()) # 17 unique terms after removing stop words
+X2_mat = X2.toarray()
+
+##### TFIDF
+vectorizer3 = TfidfVectorizer()
+X3 = vectorizer3.fit_transform(tr_tweets)
+print(X3)
+print(vectorizer3.get_feature_names())
+X3_mat = X3.toarray()
+
+####### TFIDF after removing stop words
+vectorizer4 = TfidfVectorizer(stop_words = "english")
+X4 = vectorizer4.fit_transform(tr_tweets)
+print(X4)
+print(vectorizer4.get_feature_names())
+X4_mat = X4.toarray()
+
+##### TFIDF with ngrams 2 (bigram) after removing stop words
+vectorizer5 = TfidfVectorizer(stop_words = "english", ngram_range = (1,2))
+X5 = vectorizer5.fit_transform(tr_tweets)
+print(X5)
+print(vectorizer5.get_feature_names())
+X5_mat = X5.toarray()
+
+######## Test Data
+te_tweets = ['I feel happy this morning', 
+    'Larry is my friend',
+    'I do not like that man',
+    'This view is horrible',
+    'The house is not great',
+    'Your song is annoying']
+
+
+te_sentiment = ['positive','positive',
+	'negative','negative','negative','negative']
+
+## Using pre-existing sentiment analysis models in Textblob package
+TextBlob('I feel happy this morning').polarity
+TextBlob('Larry is my friend').polarity
+TextBlob('I do not like that man').polarity
+TextBlob('This view is horrible').polarity
+
+
+
+############# Building own models using training data
+  # and evaluate on test data
+
+## TF
+X1_tree = DecisionTreeClassifier().fit(X1,tr_sentiment) # building model on training data
+pred_sentiment_tr = X1_tree.predict(X1) # predicting on training data
+pd.crosstab(np.array(tr_sentiment),pred_sentiment_tr) # 10/10
+X1_te = vectorizer1.transform(te_tweets) # feature extraction of test tweets
+X1_te_mat = X1_te.toarray()
+pred_sentiment_te = X1_tree.predict(X1_te) # predicting sentiment of test tweet
+pd.crosstab(np.array(te_sentiment),pred_sentiment_te)  #5/6
+
+X1_knn = KNeighborsClassifier(n_neighbors = 2).fit(X1,tr_sentiment)
+pred_sentiment_te_knn = X1_knn.predict(X1_te) # predicting sentiment of test tweet
+pd.crosstab(np.array(te_sentiment),pred_sentiment_te_knn)  #3/6
+
+
+# TF after removing stop words
+X2_tree = DecisionTreeClassifier().fit(X2,tr_sentiment)
+pred_sentiment_tr = X2_tree.predict(X2)
+pd.crosstab(np.array(tr_sentiment),pred_sentiment_tr) #10/10
+X2_te = vectorizer2.transform(te_tweets)
+pred_sentiment_te = X2_tree.predict(X2_te)
+pd.crosstab(np.array(te_sentiment),pred_sentiment_te)  #4/6
+
+## TFIDF
+X3_tree = DecisionTreeClassifier().fit(X3,tr_sentiment)
+pred_sentiment_tr = X3_tree.predict(X3)
+pd.crosstab(np.array(tr_sentiment),pred_sentiment_tr) #10/10
+X3_te = vectorizer3.transform(te_tweets)
+pred_sentiment_te = X3_tree.predict(X3_te)
+pd.crosstab(np.array(te_sentiment),pred_sentiment_te)  #4/6
+
+## TFIDF after removing stop words
+X4_tree = DecisionTreeClassifier().fit(X4,tr_sentiment)
+pred_sentiment_tr = X4_tree.predict(X4)
+pd.crosstab(np.array(tr_sentiment),pred_sentiment_tr) #10/10
+X4_te = vectorizer4.transform(te_tweets)
+pred_sentiment_te = X4_tree.predict(X4_te)
+pd.crosstab(np.array(te_sentiment),pred_sentiment_te)  #4/6
+
+## TFIDF Bigram
+X5_tree = DecisionTreeClassifier().fit(X5,tr_sentiment)
+pred_sentiment_tr = X5_tree.predict(X5)
+pd.crosstab(np.array(tr_sentiment),pred_sentiment_tr) #10/10
+X5_te = vectorizer5.transform(te_tweets)
+pred_sentiment_te = X5_tree.predict(X5_te)
+pd.crosstab(np.array(te_sentiment),pred_sentiment_te)  #3/6
+
+X5_knn = KNeighborsClassifier(n_neighbors = 2).fit(X5,tr_sentiment)
+pred_sentiment_te_knn = X5_knn.predict(X5_te) # predicting sentiment of test tweet
+pd.crosstab(np.array(te_sentiment),pred_sentiment_te_knn)  #3/6
+
+### How to save the models and use for future prediction
+X5_dtree_model_file = "data/TFIDF_Bigram_model.sav"
+pickle.dump(X5_knn,open(X5_dtree_model_file,"wb"))
+X5_model_loaded = pickle.load(open("data/TFIDF_Bigram_model.sav","rb"))
+X5_model_loaded.predict(X5_te)
+
+
+################ Assignment ############################################
+########## happy vs sad tweets
+f = open("data/happy.txt","r",encoding='utf8')
+happy_train = f.readlines()
+f.close()
+f = open("data/happy_test.txt","r",encoding='utf8')
+happy_test = f.readlines()
+f.close()
+f = open("data/sad.txt","r",encoding='utf8')
+sad_train = f.readlines()
+f.close()
+f = open("data/sad_test.txt","r",encoding='utf8')
+sad_test = f.readlines()
+f.close()
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
